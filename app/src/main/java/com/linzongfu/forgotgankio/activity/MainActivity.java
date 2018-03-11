@@ -17,10 +17,17 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.blankj.utilcode.util.ToastUtils;
+import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.linzongfu.forgotgankio.R;
 import com.linzongfu.forgotgankio.adapter.ArticleAdapter;
 import com.linzongfu.forgotgankio.bean.DataByCategory;
 import com.linzongfu.forgotgankio.network.Network;
+import com.linzongfu.forgotgankio.util.LoadingDialog;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -41,12 +48,15 @@ public class MainActivity extends AppCompatActivity
     @BindView(R.id.drawer_layout)
     DrawerLayout drawerLayout;
 
+    private LoadingDialog loadingDialog;
 
     private static final int defautlSize = 20;
     private static final int defaultPage = 1;
 
     private String curCategory;
     private int curPage = 1;
+
+    private List<DataByCategory.ResultsBean> resultsBeans;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,8 +66,17 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
+
         navView.setNavigationItemSelectedListener(this);
+
+        resultsBeans = new ArrayList<>();
+        loadingDialog = new LoadingDialog(this);
         initRecyclerView();
+
         loadData("all", defaultPage);
     }
 
@@ -86,7 +105,7 @@ public class MainActivity extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            Snackbar.make(item.getActionView(), "点击了主题", Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(rvArticle, "点击了主题", Snackbar.LENGTH_SHORT).show();
             return true;
         }
 
@@ -136,23 +155,40 @@ public class MainActivity extends AppCompatActivity
 
     public void initRecyclerView() {
         ArticleAdapter adapter = new ArticleAdapter();
+        adapter.setOnItemChildClickListener(new BaseQuickAdapter.OnItemChildClickListener() {
+            @Override
+            public void onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
+                DataByCategory.ResultsBean bean = resultsBeans.get(position);
+                ArticleActivity.actionStart(MainActivity.this, bean.getUrl(), bean.getDesc());
+            }
+        });
         rvArticle.setLayoutManager(new LinearLayoutManager(this));
         rvArticle.setAdapter(adapter);
     }
 
     public void loadData(String category, int page) {
+        toolbar.setTitle(category);
+        loadingDialog.show();
         Network.getDataByCategoryApi()
                 .getDataByCategory(category, defautlSize, page)
+                .delay(1, TimeUnit.SECONDS)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Consumer<DataByCategory>() {
                     @Override
                     public void accept(DataByCategory dataByCategory) throws Exception {
-                        Log.e(TAG, dataByCategory.toString());
-                        if (dataByCategory.getResults() != null) {
+                        loadingDialog.dismiss();
+                        resultsBeans = dataByCategory.getResults();
+                        if (resultsBeans != null) {
                             ArticleAdapter adapter = (ArticleAdapter) rvArticle.getAdapter();
-                            adapter.setNewData(dataByCategory.getResults());
+                            adapter.setNewData(resultsBeans);
                         }
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) throws Exception {
+                        loadingDialog.dismiss();
+                        ToastUtils.showShort("加载出错，请检查网络");
                     }
                 });
     }

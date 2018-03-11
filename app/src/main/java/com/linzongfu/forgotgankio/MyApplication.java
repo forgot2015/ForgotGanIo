@@ -2,6 +2,7 @@ package com.linzongfu.forgotgankio;
 
 import android.app.Application;
 
+import com.blankj.utilcode.util.Utils;
 import com.squareup.leakcanary.LeakCanary;
 
 /**
@@ -23,7 +24,7 @@ public class MyApplication extends Application {
         LeakCanary.install(this);
         // Normal app init code...
         instance = this;
-
+        Utils.init(this);
     }
 
     public static MyApplication getInstance() {
