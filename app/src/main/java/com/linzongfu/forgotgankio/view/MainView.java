@@ -15,5 +15,12 @@ public interface MainView extends BaseMvpView {
     void showLoadingDialog();
     void hideLoadingDialog();
     void showData(List<DataByCategory.ResultsBean> list);
+    void showMoreData(List<DataByCategory.ResultsBean> list);
     void showLoadError();
+
+    void loadMoreFail();
+
+     void loadMoreComplete();
+
+     void loadMoreEnd();
 }

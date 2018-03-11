@@ -21,7 +21,7 @@ public interface MainPresenter extends BaseMvpPresenter<MainView> {
     /**
      * 加载下一页数据
      */
-    void loadNextPage(String curCategory, int curPage);
+    void loadNextPage(String curCategory);
 
     void pressArticle(int position);
 }

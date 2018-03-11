@@ -58,10 +58,6 @@ public class MainActivity extends AppCompatActivity
     private static final int defaultPage = 1;
 
     private String curCategory;
-    private int curPage = 1;
-
-
-
     private MainPresenter presenter;
 
     @Override
@@ -85,7 +81,10 @@ public class MainActivity extends AppCompatActivity
         presenter = new MainPresenterImpl();
         presenter.attachView(this);
 
-        presenter.loadData("all", defaultPage);
+        curCategory = "all";
+        presenter.loadData(curCategory, defaultPage);
+
+
     }
 
     @Override
@@ -159,8 +158,9 @@ public class MainActivity extends AppCompatActivity
 
 
     public void updateTitleAndArticle(String category) {
-        updateTitle(category);
-        presenter.loadData(category, defaultPage);
+        curCategory = category;
+        updateTitle(curCategory);
+        presenter.loadData(curCategory, defaultPage);
     }
 
     @Override
@@ -168,18 +168,79 @@ public class MainActivity extends AppCompatActivity
         toolbar.setTitle(category);
     }
 
+    ArticleAdapter adapter;
+
     @Override
     public void initRecyclerView() {
-        ArticleAdapter adapter = new ArticleAdapter();
+        adapter = new ArticleAdapter();
         adapter.setOnItemChildClickListener(new BaseQuickAdapter.OnItemChildClickListener() {
             @Override
             public void onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
                 presenter.pressArticle(position);
             }
         });
+        adapter.setOnLoadMoreListener(new BaseQuickAdapter.RequestLoadMoreListener() {
+            @Override
+            public void onLoadMoreRequested() {
+                presenter.loadNextPage(curCategory);
+            }
+        });
         rvArticle.setLayoutManager(new LinearLayoutManager(this));
         rvArticle.setAdapter(adapter);
+
+
     }
+
+    @Override
+    public void loadMoreFail() {
+        adapter.loadMoreFail();
+    }
+
+    @Override
+    public void loadMoreComplete() {
+        adapter.loadMoreComplete();
+    }
+
+    @Override
+    public void loadMoreEnd() {
+        adapter.loadMoreEnd();
+    }
+
+//    private void loadMore() {
+//
+//        new Request(mNextRequestPage, new RequestCallBack() {
+//            @Override
+//            public void success(List<Status> data) {
+//                setData(false, data);
+//            }
+//
+//            @Override
+//            public void fail(Exception e) {
+//                mAdapter.loadMoreFail();
+//                Toast.makeText(PullToRefreshUseActivity.this, R.string.network_err, Toast.LENGTH_LONG).show();
+//            }
+//        }).start();
+//    }
+//
+//    private void setData(boolean isRefresh, List data) {
+//        mNextRequestPage++;
+//        final int size = data == null ? 0 : data.size();
+//        if (isRefresh) {
+//            mAdapter.setNewData(data);
+//        } else {
+//            if (size > 0) {
+//                mAdapter.addData(data);
+//            }
+//        }
+//        if (size < PAGE_SIZE) {
+//            //第一页如果不够一页就不显示没有更多数据布局
+//            mAdapter.loadMoreEnd(isRefresh);
+//            Toast.makeText(this, "no more data", Toast.LENGTH_SHORT).show();
+//        } else {
+//            mAdapter.loadMoreComplete();
+//        }
+//    }
+
 
     @Override
     public void showLoadingDialog() {
@@ -195,6 +256,12 @@ public class MainActivity extends AppCompatActivity
     public void showData(List<DataByCategory.ResultsBean> list) {
         ArticleAdapter adapter = (ArticleAdapter) rvArticle.getAdapter();
         adapter.setNewData(list);
+    }
+
+    @Override
+    public void showMoreData(List<DataByCategory.ResultsBean> list) {
+        ArticleAdapter adapter = (ArticleAdapter) rvArticle.getAdapter();
+        adapter.addData(list);
     }
 
     @Override

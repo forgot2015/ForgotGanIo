@@ -1,5 +1,10 @@
 package com.linzongfu.forgotgankio.presenter;
 
+import android.util.Log;
+import android.widget.Toast;
+
+import com.chad.library.adapter.base.BaseQuickAdapter;
+import com.linzongfu.forgotgankio.R;
 import com.linzongfu.forgotgankio.activity.ArticleActivity;
 import com.linzongfu.forgotgankio.activity.MainActivity;
 import com.linzongfu.forgotgankio.bean.DataByCategory;
@@ -20,13 +25,14 @@ import io.reactivex.schedulers.Schedulers;
  */
 
 public class MainPresenterImpl implements MainPresenter {
+    public static final String TAG = "MainPresenterImpl";
     private CompositeDisposable compositeDisposable;
 
     private MainView view;
 
     private static final int DEFAULT_SIZE = 20;
     private static final int DEFAULT_PAGE = 1;
-
+    private int curPage = 1;
     private List<DataByCategory.ResultsBean> resultsBeans;
 
     public MainPresenterImpl() {
@@ -77,7 +83,30 @@ public class MainPresenterImpl implements MainPresenter {
     }
 
     @Override
-    public void loadNextPage(String curCategory, int curPage) {
+    public void loadNextPage(String curCategory) {
+        curPage++;
+        Log.e(TAG, "loadNextPage" + curCategory + curPage);
+        compositeDisposable.add(Network.getDataByCategoryApi()
+                .getDataByCategory(curCategory, DEFAULT_SIZE, curPage)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<DataByCategory>() {
+                    @Override
+                    public void accept(DataByCategory dataByCategory) throws Exception {
+                        if (dataByCategory.getResults() != null) {
+                            resultsBeans.addAll(dataByCategory.getResults());
+                            view.showMoreData(dataByCategory.getResults());
+                            view.loadMoreComplete();
+                        }
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) throws Exception {
+                        view.showLoadError();
+                        view.loadMoreFail();
+                    }
+                })
+        );
 
     }
 
