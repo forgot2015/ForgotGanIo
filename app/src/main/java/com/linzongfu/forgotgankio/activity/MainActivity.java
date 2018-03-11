@@ -1,5 +1,6 @@
 package com.linzongfu.forgotgankio.activity;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -16,14 +17,17 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
-import com.blankj.utilcode.util.ToastUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.linzongfu.forgotgankio.R;
 import com.linzongfu.forgotgankio.adapter.ArticleAdapter;
 import com.linzongfu.forgotgankio.bean.DataByCategory;
 import com.linzongfu.forgotgankio.network.Network;
+import com.linzongfu.forgotgankio.presenter.MainPresenter;
+import com.linzongfu.forgotgankio.presenter.MainPresenterImpl;
 import com.linzongfu.forgotgankio.util.LoadingDialog;
+import com.linzongfu.forgotgankio.view.MainView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +41,7 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener {
+        implements NavigationView.OnNavigationItemSelectedListener, MainView {
     public static final String TAG = "MainActivity";
     @BindView(R.id.toolbar)
     Toolbar toolbar;
@@ -56,7 +60,9 @@ public class MainActivity extends AppCompatActivity
     private String curCategory;
     private int curPage = 1;
 
-    private List<DataByCategory.ResultsBean> resultsBeans;
+
+
+    private MainPresenter presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,11 +79,19 @@ public class MainActivity extends AppCompatActivity
 
         navView.setNavigationItemSelectedListener(this);
 
-        resultsBeans = new ArrayList<>();
         loadingDialog = new LoadingDialog(this);
         initRecyclerView();
 
-        loadData("all", defaultPage);
+        presenter = new MainPresenterImpl();
+        presenter.attachView(this);
+
+        presenter.loadData("all", defaultPage);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        presenter.detachView();
     }
 
     @Override
@@ -91,112 +105,105 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             Snackbar.make(rvArticle, "点击了主题", Snackbar.LENGTH_SHORT).show();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
-        // Handle navigation view item clicks here.
         switch (item.getItemId()) {
             case R.id.nav_all:
-                loadData("all", defaultPage);
+                updateTitleAndArticle("all");
                 break;
             case R.id.nav_android:
-                loadData("Android", defaultPage);
+                updateTitleAndArticle("Android");
                 break;
             case R.id.nav_ios:
-                loadData("iOS", defaultPage);
+                updateTitleAndArticle("iOS");
                 break;
             case R.id.nav_relax:
-                loadData("休息视频", defaultPage);
+                updateTitleAndArticle("休息视频");
                 break;
             case R.id.nav_welfare:
-                loadData("福利", defaultPage);
+                updateTitleAndArticle("福利");
                 break;
             case R.id.nav_expand:
-                loadData("拓展资源", defaultPage);
+                updateTitleAndArticle("拓展资源");
                 break;
             case R.id.nav_front:
-                loadData("前端", defaultPage);
+                updateTitleAndArticle("前端");
                 break;
             case R.id.nav_recommend:
-                loadData("瞎推荐", defaultPage);
+                updateTitleAndArticle("瞎推荐");
                 break;
             case R.id.nav_app:
-                loadData("App", defaultPage);
+                updateTitleAndArticle("App");
                 break;
             default:
                 break;
         }
-
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
     }
 
 
+    public void updateTitleAndArticle(String category) {
+        updateTitle(category);
+        presenter.loadData(category, defaultPage);
+    }
+
+    @Override
+    public void updateTitle(String category) {
+        toolbar.setTitle(category);
+    }
+
+    @Override
     public void initRecyclerView() {
         ArticleAdapter adapter = new ArticleAdapter();
         adapter.setOnItemChildClickListener(new BaseQuickAdapter.OnItemChildClickListener() {
             @Override
             public void onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
-                DataByCategory.ResultsBean bean = resultsBeans.get(position);
-                ArticleActivity.actionStart(MainActivity.this, bean.getUrl(), bean.getDesc());
+                presenter.pressArticle(position);
             }
         });
         rvArticle.setLayoutManager(new LinearLayoutManager(this));
         rvArticle.setAdapter(adapter);
     }
 
-    public void loadData(String category, int page) {
-        toolbar.setTitle(category);
+    @Override
+    public void showLoadingDialog() {
         loadingDialog.show();
-        Network.getDataByCategoryApi()
-                .getDataByCategory(category, defautlSize, page)
-                .delay(1, TimeUnit.SECONDS)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<DataByCategory>() {
-                    @Override
-                    public void accept(DataByCategory dataByCategory) throws Exception {
-                        loadingDialog.dismiss();
-                        resultsBeans = dataByCategory.getResults();
-                        if (resultsBeans != null) {
-                            ArticleAdapter adapter = (ArticleAdapter) rvArticle.getAdapter();
-                            adapter.setNewData(resultsBeans);
-                        }
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) throws Exception {
-                        loadingDialog.dismiss();
-                        ToastUtils.showShort("加载出错，请检查网络");
-                    }
-                });
     }
 
-    public void prePage(String curCategory, int curPage) {
-
+    @Override
+    public void hideLoadingDialog() {
+        loadingDialog.dismiss();
     }
 
-    public void nextPage(String curCategory, int curPage) {
+    @Override
+    public void showData(List<DataByCategory.ResultsBean> list) {
+        ArticleAdapter adapter = (ArticleAdapter) rvArticle.getAdapter();
+        adapter.setNewData(list);
+    }
+
+    @Override
+    public void showLoadError() {
+        Toast.makeText(MainActivity.this, "加载出错，请检查网络", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public Context getContext() {
+        return this;
     }
 }

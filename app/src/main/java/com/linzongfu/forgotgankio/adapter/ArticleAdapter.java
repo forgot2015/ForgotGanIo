@@ -31,9 +31,8 @@ public class ArticleAdapter extends BaseQuickAdapter<DataByCategory.ResultsBean,
     protected void convert(BaseViewHolder helper, DataByCategory.ResultsBean item) {
         helper.setText(R.id.tv_title, item.getDesc());
         if (item.getWho() != null) {
-            helper.setText(R.id.tv_writer, item.getWho().toString());
+            helper.setText(R.id.tv_writer, "上传者：" + item.getWho().toString());
         }
-        helper.addOnClickListener(R.id.tv_title);
-        helper.addOnClickListener(R.id.tv_writer);
+        helper.addOnClickListener(R.id.cardView);
     }
 }
