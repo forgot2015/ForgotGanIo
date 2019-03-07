@@ -7,10 +7,13 @@ notifications:      # 每次构建的时候是否通知，如果不想收到通�
 sudo: false         # 开启基于容器的Travis CI任务，让编译效率更高。
 before_script:
   - chmod +x gradlew
+  
 android:            # 配置信息
   components:
-    - tools
+    #- tools
     - build-tools-28.0.3              
     - android-28                     
     - extra-android-m2repository     # Android Support Repository
     - extra-android-support          # Support Library
+    - extra-google-m2repository
+   
