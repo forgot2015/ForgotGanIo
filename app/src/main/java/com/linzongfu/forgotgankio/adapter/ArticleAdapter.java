@@ -35,7 +35,7 @@ public class ArticleAdapter extends BaseQuickAdapter<DataByCategory.ResultsBean,
             helper.getView(R.id.iv_welfare).bringToFront();
             helper.getView(R.id.iv_welfare).setVisibility(View.VISIBLE);
             helper.getView(R.id.ll_article).setVisibility(View.GONE);
-            Picasso.with(MyApplication.getInstance())
+            Picasso.get()
                     .load(item.getUrl())
                     .into((ImageView) helper.getView(R.id.iv_welfare));
         } else {
